@@ -25,8 +25,9 @@ func CreateChannelsComponent(inputHeight int) *termui.List {
 
 func CreateChatComponent(inputHeight int) *termui.List {
 	messages := []string{
-		"[jp] hello world",
-		"[erroneousboat] foo bar",
+		"",
+		"",
+		"",
 	}
 
 	compChat := termui.NewList()

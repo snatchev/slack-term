@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/gizak/termui"
 
 	"github.com/erroneousboat/slack-term/src/context"
@@ -20,22 +22,17 @@ func anyKeyHandler(ctx *context.AppContext) func(termui.Event) {
 			switch key {
 			case "q":
 				actionQuit()
-				return
 			case "i":
 				actionInsertMode(ctx)
-				return
 			}
 		} else if ctx.Mode == context.InsertMode {
 			switch key {
 			case "<escape>":
 				actionCommandMode(ctx)
-				return
 			case "<enter>":
 				actionSend(ctx)
-				return
 			case "<space>":
 				actionInput(ctx.View, " ")
-				return
 			case "<backspace>":
 				actionBackSpace(ctx.View)
 			case "C-8":
@@ -46,11 +43,15 @@ func anyKeyHandler(ctx *context.AppContext) func(termui.Event) {
 				actionMoveCursorLeft(ctx.View)
 			default:
 				actionInput(ctx.View, key)
-				return
 			}
 
 		}
 
+		// DEBUG
+		ctx.View.Chat.Items[0] = fmt.Sprintf("CUR: %d", ctx.View.Input.CursorPosition)
+		ctx.View.Chat.Items[1] = fmt.Sprintf("VCUR: %d", ctx.View.Input.VisibleCursorPosition)
+		ctx.View.Chat.Items[2] = fmt.Sprintf("LEN: %d", len(ctx.View.Input.Text()))
+		termui.Render(ctx.View.Chat)
 	}
 }
 
@@ -79,12 +80,12 @@ func actionBackSpace(view *views.View) {
 }
 
 func actionMoveCursorRight(view *views.View) {
-	view.Input.MoveCursorRight()
+	view.Input.MoveVisibleCursorRight()
 	termui.Render(view.Input)
 }
 
 func actionMoveCursorLeft(view *views.View) {
-	view.Input.MoveCursorLeft()
+	view.Input.MoveVisibleCursorLeft()
 	termui.Render(view.Input)
 }
 

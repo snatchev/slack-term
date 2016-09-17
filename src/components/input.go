@@ -1,19 +1,26 @@
 package components
 
-import "github.com/gizak/termui"
+import (
+	"fmt"
+
+	"github.com/gizak/termui"
+)
 
 // Input is the definition of and input box
 type Input struct {
-	Par            *termui.Par
-	CursorPosition int
-	CursorFgColor  termui.Attribute
-	CursorBgColor  termui.Attribute
+	Par                   *termui.Par
+	Offset                int
+	VisibleCursorPosition int
+	CursorPosition        int
+	CursorFgColor         termui.Attribute
+	CursorBgColor         termui.Attribute
 }
 
 // CreateInput is the constructor of the Input struct
 func CreateInput() *Input {
 	input := &Input{
 		Par:            termui.NewPar(""),
+		Offset:         0,
 		CursorPosition: 0,
 		CursorBgColor:  termui.ColorBlack,
 		CursorFgColor:  termui.ColorWhite,
@@ -28,10 +35,28 @@ func CreateInput() *Input {
 func (i *Input) Buffer() termui.Buffer {
 	buf := i.Par.Buffer()
 
+	// Overflow
+	if len(i.Par.Text)+1 > i.Par.InnerBounds().Dx() {
+		cs := termui.DefaultTxBuilder.Build(i.Par.Text, i.Par.TextFgColor, i.Par.TextBgColor)
+
+		// i.Offset = len(i.Par.Text) + 1 - i.Par.InnerBounds().Dx() - len(i.Par.Text)
+		left := i.CursorPosition - i.VisibleCursorPosition
+		right := ((i.Par.InnerBounds().Dx() - 1) - i.VisibleCursorPosition) + i.CursorPosition
+		fmt.Printf("left, right: %d,%d", left, right)
+
+		for n, ch := range cs[left:right] {
+			buf.Set(
+				i.Par.InnerX()+n+1,
+				i.Par.Block.InnerY(),
+				ch,
+			)
+		}
+	}
+
 	// Set visible cursor
-	char := buf.At(i.Par.InnerX()+i.CursorPosition, i.Par.Block.InnerY())
+	char := buf.At(i.Par.InnerX()+i.VisibleCursorPosition, i.Par.Block.InnerY())
 	buf.Set(
-		i.Par.InnerX()+i.CursorPosition,
+		i.Par.InnerX()+i.VisibleCursorPosition,
 		i.Par.Block.InnerY(),
 		termui.Cell{Ch: char.Ch, Fg: termui.ColorBlack, Bg: termui.ColorWhite},
 	)
@@ -61,15 +86,19 @@ func (i *Input) SetY(y int) {
 
 // Insert will insert a given key at the place of the current CursorPosition
 func (i *Input) Insert(key string) {
-	i.Par.Text = i.Par.Text[0:i.CursorPosition] + key + i.Par.Text[i.CursorPosition:len(i.Par.Text)]
-	i.MoveCursorRight()
+	// TODO: from what is visible not Text
+	// change i.CursorPosition to i.VisibleCursorPosition
+	i.Par.Text = i.Par.Text[0:i.CursorPosition] + key + i.Par.Text[i.CursorPosition:]
+	i.MoveVisibleCursorRight()
 }
 
 // Remove will remove a character at the place of the current CursorPosition
 func (i *Input) Remove() {
 	if i.CursorPosition > 0 {
-		i.Par.Text = i.Par.Text[0:i.CursorPosition-1] + i.Par.Text[i.CursorPosition:len(i.Par.Text)]
-		i.MoveCursorLeft()
+		// TODO: from what is visible not Text
+		// change i.CursorPosition to i.VisibleCursorPosition
+		i.Par.Text = i.Par.Text[0:i.CursorPosition-1] + i.Par.Text[i.CursorPosition:]
+		i.MoveVisibleCursorLeft()
 	}
 }
 
@@ -87,6 +116,22 @@ func (i *Input) MoveCursorLeft() {
 	}
 }
 
+func (i *Input) MoveVisibleCursorRight() {
+	// TODO: if (visible) cursor is at the bounds of the textbox redraw it
+	if i.VisibleCursorPosition < i.Par.InnerBounds().Dx()-1 && i.VisibleCursorPosition < len(i.Par.Text) {
+		i.VisibleCursorPosition++
+	}
+	i.MoveCursorRight()
+}
+
+func (i *Input) MoveVisibleCursorLeft() {
+	// TODO: if (visible) cursor is at the bounds of the textbox redraw it
+	if i.VisibleCursorPosition > 0 {
+		i.VisibleCursorPosition--
+	}
+	i.MoveCursorLeft()
+}
+
 // IsEmpty will return true when the input is empty
 func (i *Input) IsEmpty() bool {
 	if i.Par.Text == "" {
@@ -99,6 +144,8 @@ func (i *Input) IsEmpty() bool {
 func (i *Input) Clear() {
 	i.Par.Text = ""
 	i.CursorPosition = 0
+	i.VisibleCursorPosition = 0
+	i.Offset = 0
 }
 
 // Text returns the text currently in the input
